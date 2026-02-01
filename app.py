@@ -2,7 +2,6 @@ import streamlit as st
 from fpdf import FPDF
 from datetime import date
 
-# Configuração da Página
 st.set_page_config(page_title="Gerador Anexo Bravo - GTE", page_icon="✈️")
 
 DADOS_MILITARES = {
@@ -16,38 +15,62 @@ def gerar_pdf(dados):
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     
-    # 1. Destinatário [cite: 1, 2]
+    # Cabeçalho
     pdf.cell(0, 10, text="Ao Ministério das Relações Exteriores (Setor de Contabilidade)", new_x="LMARGIN", new_y="NEXT")
     pdf.cell(0, 10, text="Sr Responsável,", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(10)
     
-    # 2. Corpo do Texto [cite: 3, 4, 5, 6, 7]
-    texto = (f"Eu, {dados['nome']}, carteira de identidade n° {dados['identidade']}, CPF {dados['cpf']}, "
-             f"manifesto o interesse em receber os valores das diárias referentes à viagem realizada para "
-             f"{dados['localidades']} diretamente creditadas na minha conta corrente, cujos dados bancários são:")
-    pdf.multi_cell(0, 10, text=texto)
-    pdf.ln(5)
+    # Função para escrever texto com partes destacadas (Negrito e Sublinhado)
+    def escrever_misto(texto_normal, dado_destaque, texto_continua=None):
+        pdf.set_font("Arial", style="", size=12)
+        pdf.write(10, texto_normal)
+        pdf.set_font("Arial", style="BU", size=12) # B=Negrito, U=Sublinhado
+        pdf.write(10, f" {dado_destaque} ")
+        if texto_continua:
+            pdf.set_font("Arial", style="", size=12)
+            pdf.write(10, texto_continua)
+
+    # Início do Corpo do Texto
+    escrever_misto("Eu, ", dados['nome'])
+    escrever_misto(", carteira de identidade n° ", dados['identidade'])
+    escrever_misto(", CPF ", dados['cpf'])
+    pdf.write(10, ", manifesto o interesse em receber os valores das diárias referentes à viagem realizada para ")
+    escrever_misto("", dados['localidades'])
+    pdf.write(10, " diretamente creditadas na minha conta corrente, cujos dados bancários são: ")
     
-    # 3. Dados Bancários [cite: 8, 9, 10, 11]
-    pdf.cell(0, 10, text=f"Banco: {dados['banco']}; Agência: {dados['agencia']}; Conta Corrente: {dados['conta']}", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(5)
+    pdf.ln(15)
+    
+    # Dados Bancários
+    escrever_misto("Banco: ", dados['banco'])
+    escrever_misto("; Agência: ", dados['agencia'])
+    escrever_misto("; Conta Corrente: ", dados['conta'])
+    
+    pdf.ln(15)
+    pdf.set_font("Arial", style="", size=12)
     pdf.multi_cell(0, 10, text="Declaro, ainda, que os dados bancários por mim informados estão ativos no Sistema Integrado de Administração Financeira (SIAFI).")
     
-    # 4. Assinatura [cite: 12, 16]
+    # Assinatura
     pdf.ln(20)
     pdf.cell(0, 10, text="Respeitosamente/Atenciosamente,", new_x="LMARGIN", new_y="NEXT", align='C')
-    pdf.ln(10)
+    pdf.ln(15)
     pdf.cell(0, 10, text="________________________________________________", new_x="LMARGIN", new_y="NEXT", align='C')
+    
+    # Nome e Graduação em Negrito/Sublinhado na assinatura
+    pdf.set_font("Arial", style="BU", size=12)
     pdf.cell(0, 10, text=f"{dados['nome']} - {dados['graduacao']}", new_x="LMARGIN", new_y="NEXT", align='C')
+    
+    pdf.set_font("Arial", style="", size=12)
     pdf.cell(0, 10, text=f"Função: {dados['funcao']}", new_x="LMARGIN", new_y="NEXT", align='C')
     
-    # 5. Local e Data [cite: 13, 14, 15]
+    # Data
     pdf.ln(15)
-    meses = ["janeiro", "fevereiro", "março", "abril", "maio", " junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
-    dia = dados['data_doc'].day
-    mes = meses[dados['data_doc'].month - 1]
-    ano = dados['data_doc'].year
-    pdf.cell(0, 10, text=f"Brasília, DF, {dia} de {mes} de {ano}", new_x="LMARGIN", new_y="NEXT", align='R')
+    meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
+    data_str = f"{dados['data_doc'].day} de {meses[dados['data_doc'].month - 1]} de {dados['data_doc'].year}"
+    
+    pdf.set_font("Arial", style="", size=12)
+    pdf.write(10, "Brasília, DF, ")
+    pdf.set_font("Arial", style="BU", size=12)
+    pdf.write(10, data_str)
     
     return pdf.output()
 
@@ -55,18 +78,18 @@ def gerar_pdf(dados):
 st.header("✈️ Preenchimento de Opção de Diária (Anexo B)")
 
 with st.form("form_diaria"):
-    col1, col2 = st.columns([2, 1])
-    nome = col1.text_input("Nome Completo")
-    forca = col2.selectbox("Força", list(DADOS_MILITARES.keys()))
+    nome = st.text_input("Nome Completo").upper()
     
-    col3, col4, col5 = st.columns(3)
-    identidade = col3.text_input("Identidade")
-    cpf = col4.text_input("CPF")
-    graduacao = col5.selectbox("Posto/Graduação", DADOS_MILITARES[forca])
+    col1, col2, col3 = st.columns(3)
+    identidade = col1.text_input("Identidade")
+    cpf = col2.text_input("CPF")
+    forca = col3.selectbox("Força", list(DADOS_MILITARES.keys()))
     
-    funcao = st.text_input("Função (Ex: Mecânico de Voo, Comissário, etc.)")
+    col4, col5 = st.columns(2)
+    graduacao = col4.selectbox("Posto/Graduação", DADOS_MILITARES[forca])
+    funcao = col5.text_input("Função").upper()
     
-    localidades = st.text_area("Cidades/Países da Missão (Ex: Seul/Coreia do Sul, Túnis/Tunísia)")
+    localidades = st.text_area("Cidades/Países da Missão")
     
     st.subheader("Dados Bancários (SIAFI)")
     c_banco, c_ag, c_cc = st.columns(3)
@@ -76,18 +99,17 @@ with st.form("form_diaria"):
     
     data_doc = st.date_input("Data do Documento", value=date.today())
     
-    submitted = st.form_submit_button("Gerar PDF para Impressão")
+    submitted = st.form_submit_button("Gerar PDF com Destaque")
 
 if submitted:
     if not nome or not cpf:
-        st.error("Por favor, preencha o nome e o CPF.")
+        st.error("Campos obrigatórios faltando.")
     else:
         dados_finais = {
-            "nome": nome.upper(), "identidade": identidade, "cpf": cpf,
-            "forca": forca, "graduacao": graduacao, "funcao": funcao.upper(),
+            "nome": nome, "identidade": identidade, "cpf": cpf,
+            "forca": forca, "graduacao": graduacao, "funcao": funcao,
             "localidades": localidades, "banco": banco, "agencia": agencia, 
             "conta": conta, "data_doc": data_doc
         }
         pdf_out = gerar_pdf(dados_finais)
-        st.success("PDF Gerado com sucesso!")
-        st.download_button(label="📥 Baixar Anexo B", data=bytes(pdf_out), file_name=f"Anexo_B_{nome.replace(' ', '_')}.pdf", mime="application/pdf")
+        st.download_button(label="📥 Baixar Anexo B", data=bytes(pdf_out), file_name="Anexo_B_Destaque.pdf", mime="application/pdf")
